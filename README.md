@@ -8,7 +8,7 @@ Apache Solr, PHP, Java, Python, NetworkX
 
 # 3. Spell checking and AutoComplete
 spell correction: PHP version of Norvig's spelling corrector
-\br autocoomplete: FuzzyLookupFactoory from Solr
+<br/> autocoomplete: FuzzyLookupFactoory from Solr
 
 <!--
 Web Crawling:
