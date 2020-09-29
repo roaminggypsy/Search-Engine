@@ -1,6 +1,14 @@
 # Search-Engine (Document in the work)
 
+# 1. Web Crawling:
+Java, crawler4j
 
+# 2. Indexing HTML files:
+Apache Solr, PHP, Java, Python, NetworkX
+
+# 3. Spell checking and AutoComplete
+spell correction: PHP version of Norvig's spelling corrector
+autocoomplete: FuzzyLookupFactoory from Solr
 
 <!--
 Web Crawling:
