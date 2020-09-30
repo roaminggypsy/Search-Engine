@@ -1,11 +1,15 @@
 <?php
-
 // make sure browsers see this page as utf-8 encoded HTML
 header('Content-Type: text/html; charset=utf-8');
+header("Access-Control-Allow-Origin: *");
+
+include 'SpellCorrector.php';
 
 $limit = 10;
 $query = isset($_REQUEST['q']) ? $_REQUEST['q'] : false;
+$corrected = false;
 $results = false;
+$useSpellCorrect = true;
 
 if ($query)
 {
@@ -30,6 +34,7 @@ if ($query)
   // problems or a query parsing error)
   try
   {
+    $corrected = SpellCorrector::correct($query);
     $additionalParameters = array(
       'sort' => $_GET["rank"]
     );
@@ -45,18 +50,152 @@ if ($query)
 }
 
 ?>
+<?php ini_set ('memory_limit', -1)?>
+
 <html>
   <head>
     <title>PHP Solr Client Example</title>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.js" integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc=" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js" integrity="sha256-T0Vest3yCU7pafRw9r+settMBX6JkKN06dqBnpQ8d30=" crossorigin="anonymous"></script>
+
+    <script>
+    var options = [];
+
+  //   $(function() {
+  //     function log( message ) {
+  //       $( "<div>" ).text( message ).prependTo( "#log" );
+  //       $( "#log" ).scrollTop( 0 );
+  //     }
+  //
+  //   $( "#q" ).autocomplete({
+  //     source: function( request, response ) {
+  //       $.ajax({
+  //         url: "http://localhost:8983/solr/myexample/suggest",
+  //         dataType: "jsonp",
+  //         data: {
+  //           q: $("#q").val()
+  //         },
+  //         success: function( data ) {
+  //           console.log(data);
+  //           response( data );
+  //         }
+  //       });
+  //     },
+  //     minLength: 3,
+  //     select: function( event, ui ) {
+  //       log( ui.item ?
+  //         "Selected: " + ui.item.label :
+  //         "Nothing selected, input was " + this.value);
+  //     },
+  //     open: function() {
+  //       $( this ).removeClass( "ui-corner-all" ).addClass( "ui-corner-top" );
+  //     },
+  //     close: function() {
+  //       $( this ).removeClass( "ui-corner-top" ).addClass( "ui-corner-all" );
+  //     }
+  //   });
+  // });
+
+      function correctSearch() {
+        document.getElementById("q").value = document.getElementById("corrected").text.trim();
+        document.getElementById("search").submit();
+      }
+
+      function suggest() {
+        document.getElementById('suggestions').style.visibility = 'visible';
+        query = document.getElementById("q").value;
+        if (window.XMLHttpRequest) {
+          xmlhttp=new XMLHttpRequest();
+        } else {
+          xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+        }
+
+        xmlhttp.onreadystatechange=function() {
+          if (xmlhttp.readyState==4 && xmlhttp.status==200) {
+            // var list = document.getElementById("suggestions");
+            // var i, L = list.options.length - 1;
+            // for(i = L; i >= 0; i--) {
+            //   list.remove(i);
+            // }
+            document.getElementById("suggestions").innerHTML = "";
+
+            //
+            // var mycars = new Array();
+            // mycars[0]='Herr';
+            // mycars[1]='Frau';
+            //
+            // JSON.parse(JSON.stringify(data.suggest.suggest))[after].suggestions;
+            //
+            //
+
+
+            // document.getElementById('anrede').innerHTML = options;
+            var len = JSON.parse(xmlhttp.responseText).suggest.suggest[query].numFound;
+            options = [];
+            for(var i = 0; i < len; i++) {
+              var li = document.createElement('LI');
+              li.setAttribute("id", "li" + i);
+              li.setAttribute("overflow", "hidden");
+              options.push(JSON.parse(xmlhttp.responseText).suggest.suggest[query].suggestions[i].term);
+              li.innerHTML = options[i];
+              li.onclick = function() {
+                document.getElementById('q').value = this.innerText;
+                document.getElementById('suggestions').style.visibility = 'hidden';
+               };
+              console.log(li);
+              document.getElementById('suggestions').appendChild(li);
+            }
+
+              // options += '<option value="'+ JSON.parse(xmlhttp.responseText).suggest.suggest[query].suggestions[i].term +'" />';
+            //console.log(JSON.parse(xmlhttp.responseText).suggest.suggest[query]);
+            // console.log(options);
+            // document.getElementById('suggestions').innerHTML = options;
+            // }
+            //
+            //
+            //
+            //
+            // console.log(xmlhttp.responseText);
+            // var suggestions = xmlhttp.responseText;
+            // var res = suggestions.split(",");
+            // var len =res.length;
+            // var text = "";
+            // document.getElementById("demo").innerHTML = xmlhttp.responseText;
+          }
+        }
+        xmlhttp.open("GET",
+        "http://localhost:8983/solr/myexample/suggest?q=" + query,
+        true);
+        xmlhttp.send();
+        }
+    </script>
   </head>
   <body>
-    <form  accept-charset="utf-8" method="get">
+    <form id="search" accept-charset="utf-8" method="get">
       <label for="q">Search:</label>
-      <input id="q" name="q" type="text" value="<?php echo htmlspecialchars($query, ENT_QUOTES, 'utf-8'); ?>"/>
+      <input id="q" name="q" type="text" onkeyup="suggest()" style="width:200px;" value="<?php echo htmlspecialchars($query, ENT_QUOTES, 'utf-8'); ?>"/>
+      <ol id="suggestions" style="list-style:none;margin-top:0;margin-left:61px;background:lightgray;width:200px;padding-left:0;overflow:hidden">
+      </ol>
+
       <input type="radio" name="rank" <?php if (!isset($rank) || (isset($rank) && $rank=="")) echo "checked";?> value="">Lucene
       <input type="radio" name="rank" <?php if ($_GET['rank'] == "pageRankFile desc" || (isset($rank) && $rank=="pageRankFile desc")) echo "checked";?> value="pageRankFile desc">pageRankFile
+
       <input type="submit"/>
     </form>
+
+    <?php
+if ($useSpellCorrect && $corrected != $_GET['q']) {
+    ?>
+    <div>Did you mean:
+        <a id="corrected" href="javascript: void(0)" onclick="correctSearch()">
+            <?php echo $corrected; ?>
+        </a>
+    </div>
+    <?php
+}
+?>
+
 <?php
 
 // display results
